@@ -1,0 +1,18 @@
+# Maven build output — never commit compiled artefacts
+target/
+
+# IDE metadata
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+*.eclipse
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IntelliJ
+*.iws
+out/
