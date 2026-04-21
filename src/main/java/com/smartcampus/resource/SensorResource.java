@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  *   PUT    /sensors/{sensorId}             → update sensor fields
  *   DELETE /sensors/{sensorId}             → remove sensor, update parent room's sensorIds
  *
- * Sub-resource locator (Day 3):
+ * Sub-resource locator:
  *   /sensors/{sensorId}/readings           → delegates to SensorReadingResource
  */
 @Path("/sensors")

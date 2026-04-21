@@ -19,7 +19,7 @@ import java.util.*;
  * NOT registered as a root resource — no @Path annotation at class level.
  * Jersey instantiates this class through the locator in SensorResource.
  *
- * Full implementation: Day 3.
+ * Day 3 implementation complete.
  */
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -72,7 +72,7 @@ public class SensorReadingResource {
      *   - Timestamp is set server-side to System.currentTimeMillis()
      *   - Side effect: sensor.currentValue is updated to the new reading's value
      *
-     * Full implementation: Day 3.
+     * Day 3 implementation complete.
      */
     @POST
     public Response addReading(SensorReading reading, @Context UriInfo uriInfo) {
