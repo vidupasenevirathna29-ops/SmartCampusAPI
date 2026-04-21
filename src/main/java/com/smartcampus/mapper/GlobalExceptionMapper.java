@@ -21,19 +21,7 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
 
     @Override
     public Response toResponse(Throwable exception) {
-        // If it's already a WebApplicationException (like 405 Method Not Allowed), let it use its own status
-        if (exception instanceof WebApplicationException) {
-            WebApplicationException wae = (WebApplicationException) exception;
-            return Response.status(wae.getResponse().getStatus())
-                    .entity(Map.of(
-                            "error", "API Error",
-                            "message", wae.getMessage() != null ? wae.getMessage() : "An error occurred"
-                    ))
-                    .type(MediaType.APPLICATION_JSON)
-                    .build();
-        }
-
-        // Log the actual exception securely on the server side
+        // Log the actual exception securely on the server side — never expose the stack trace to the client
         LOGGER.log(Level.SEVERE, "Unhandled server exception: " + exception.getMessage(), exception);
 
         // Return a generic safe message to the client

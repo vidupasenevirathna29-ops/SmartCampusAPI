@@ -70,7 +70,7 @@ public class SensorResource {
 
         Room parentRoom = store.getRooms().get(roomId);
         if (parentRoom == null) {
-            // Throws → ExceptionMapper converts to 422 (Day 4)
+            // Throws → ExceptionMapper converts to 422 Unprocessable Entity
             throw new LinkedResourceNotFoundException("Room", roomId);
         }
 

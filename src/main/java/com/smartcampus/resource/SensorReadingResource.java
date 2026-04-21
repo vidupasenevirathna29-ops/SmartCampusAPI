@@ -76,6 +76,13 @@ public class SensorReadingResource {
      */
     @POST
     public Response addReading(SensorReading reading, @Context UriInfo uriInfo) {
+        // Validate request body first
+        if (reading == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", "Request body must be a valid SensorReading JSON object."))
+                    .build();
+        }
+
         Sensor sensor = store.getSensors().get(sensorId);
         if (sensor == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -85,15 +92,10 @@ public class SensorReadingResource {
                     .build();
         }
 
-        // Guard: sensor under maintenance cannot accept readings
-        if ("MAINTENANCE".equalsIgnoreCase(sensor.getStatus())) {
+        // Guard: sensor under maintenance or offline cannot accept readings
+        if ("MAINTENANCE".equalsIgnoreCase(sensor.getStatus())
+                || "OFFLINE".equalsIgnoreCase(sensor.getStatus())) {
             throw new SensorUnavailableException(sensorId, sensor.getStatus());
-        }
-
-        if (reading == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", "Request body must be a valid SensorReading JSON object."))
-                    .build();
         }
 
         // Server-side metadata

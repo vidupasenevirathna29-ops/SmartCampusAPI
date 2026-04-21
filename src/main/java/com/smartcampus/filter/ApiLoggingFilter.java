@@ -22,7 +22,6 @@ public class ApiLoggingFilter implements ContainerRequestFilter, ContainerRespon
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
-        // Day 4: full logging implementation
         LOGGER.info("[REQUEST]  " + requestContext.getMethod()
                 + " " + requestContext.getUriInfo().getRequestUri());
     }
@@ -30,7 +29,6 @@ public class ApiLoggingFilter implements ContainerRequestFilter, ContainerRespon
     @Override
     public void filter(ContainerRequestContext requestContext,
                        ContainerResponseContext responseContext) throws IOException {
-        // Day 4: full logging implementation
         LOGGER.info("[RESPONSE] " + responseContext.getStatus());
     }
 }
