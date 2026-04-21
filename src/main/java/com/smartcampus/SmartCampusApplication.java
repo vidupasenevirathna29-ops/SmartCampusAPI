@@ -41,6 +41,13 @@ public class SmartCampusApplication extends Application {
         // --- Filters (logging) ---
         classes.add(ApiLoggingFilter.class);
 
+        // --- Exception Mappers ---
+        classes.add(com.smartcampus.mapper.RoomNotEmptyExceptionMapper.class);
+        classes.add(com.smartcampus.mapper.LinkedResourceNotFoundExceptionMapper.class);
+        classes.add(com.smartcampus.mapper.SensorUnavailableExceptionMapper.class);
+        classes.add(com.smartcampus.mapper.NotFoundExceptionMapper.class);
+        classes.add(com.smartcampus.mapper.GlobalExceptionMapper.class);
+
         return classes;
     }
 }
