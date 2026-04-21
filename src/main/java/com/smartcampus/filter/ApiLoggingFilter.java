@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 
 /**
  * API observability filter — logs every request and response.
- * Full implementation: Day 4.
+ * Day 4 implementation complete.
  *
  * Implements both ContainerRequestFilter and ContainerResponseFilter
  * as required by Part 5.5 of the coursework.
