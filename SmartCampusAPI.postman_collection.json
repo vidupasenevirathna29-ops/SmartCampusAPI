@@ -1,0 +1,507 @@
+{
+  "info": {
+    "_postman_id": "sc-api-collection-2026",
+    "name": "Smart Campus API",
+    "description": "5COSC022W Coursework — JAX-RS/Jersey REST API for campus room and sensor management.\n\nBase URL: http://localhost:8080/api/v1\n\nFolders:\n1. Discovery\n2. Rooms\n3. Sensors\n4. Sensor Readings\n5. Error Cases",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "roomId",
+      "value": "",
+      "type": "string",
+      "description": "Set this after creating a room"
+    },
+    {
+      "key": "sensorId",
+      "value": "",
+      "type": "string",
+      "description": "Set this after registering a sensor"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Discovery",
+      "item": [
+        {
+          "name": "GET /api/v1 — Discovery Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Returns API metadata including version, description, contact, and HATEOAS links to available collections.\n\nExpected: 200 OK"
+          },
+          "response": [
+            {
+              "name": "200 OK — API Discovery",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"name\": \"Smart Campus API\",\n  \"version\": \"1.0\",\n  \"description\": \"RESTful API for managing campus rooms and environmental sensors.\",\n  \"contact\": \"admin@smartcampus.ac.uk\",\n  \"status\": \"operational\",\n  \"_links\": {\n    \"rooms\": \"/api/v1/rooms\",\n    \"sensors\": \"/api/v1/sensors\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Rooms",
+      "item": [
+        {
+          "name": "GET /rooms — List All Rooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms"]
+            },
+            "description": "Returns a JSON array of all rooms in the DataStore.\n\nExpected: 200 OK with array (empty [] if no rooms exist)"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /rooms — Create Room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('roomId', json.id);",
+                  "    console.log('Room ID saved: ' + json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lab A101\",\n  \"capacity\": 30\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rooms",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms"]
+            },
+            "description": "Creates a new room. ID is auto-generated if not supplied.\n\nThe test script saves the new room's ID to the `roomId` collection variable for use in subsequent requests.\n\nExpected: 201 Created + Location header"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": \"a1b2c3d4-1234-5678-abcd-ef1234567890\",\n  \"name\": \"Lab A101\",\n  \"capacity\": 30,\n  \"sensorIds\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET /rooms/:roomId — Get Room by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/{{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "{{roomId}}"]
+            },
+            "description": "Returns a single room by its ID.\n\nExpected: 200 OK if found, 404 Not Found if not."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /rooms/:roomId — Update Room",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lab A101 (Renovated)\",\n  \"capacity\": 40\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rooms/{{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "{{roomId}}"]
+            },
+            "description": "Updates the name and/or capacity of an existing room.\n\nExpected: 200 OK with updated room object, 404 if not found."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /rooms/:roomId — Delete Room (no sensors)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/{{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "{{roomId}}"]
+            },
+            "description": "Deletes the room if it has NO sensors.\n\nExpected: 204 No Content if successful.\nExpected: 409 Conflict if sensors still exist in the room.\nExpected: 404 Not Found if room doesn't exist."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Sensors",
+      "item": [
+        {
+          "name": "POST /sensors — Register Sensor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('sensorId', json.id);",
+                  "    console.log('Sensor ID saved: ' + json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"CO2\",\n  \"roomId\": \"{{roomId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sensors",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors"]
+            },
+            "description": "Registers a new sensor linked to the specified room.\n\n- `roomId` must refer to an existing room (otherwise 422).\n- `status` defaults to ACTIVE if not supplied.\n- ID is auto-generated.\n- Saves sensor ID to `sensorId` collection variable.\n\nExpected: 201 Created + Location header"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": \"s1s2s3s4-...\",\n  \"type\": \"CO2\",\n  \"status\": \"ACTIVE\",\n  \"currentValue\": 0.0,\n  \"roomId\": \"a1b2c3d4-...\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET /sensors — List All Sensors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensors",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors"]
+            },
+            "description": "Returns all sensors.\n\nExpected: 200 OK with array"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /sensors?type=CO2 — Filter by Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensors?type=CO2",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "CO2",
+                  "description": "Filter sensors by type (case-insensitive)"
+                }
+              ]
+            },
+            "description": "Returns only sensors of the specified type.\n\nTry also: ?type=Temperature, ?type=Humidity\n\nExpected: 200 OK with filtered array (empty [] if no match)"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /sensors/:sensorId — Get Sensor by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensors/{{sensorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors", "{{sensorId}}"]
+            },
+            "description": "Returns a single sensor by ID.\n\nExpected: 200 OK or 404 Not Found."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /sensors/:sensorId — Update Sensor",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"type\": \"CO2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sensors/{{sensorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors", "{{sensorId}}"]
+            },
+            "description": "Updates sensor type, status, and/or currentValue.\nroomId and id are immutable.\n\nExpected: 200 OK with updated sensor."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /sensors/:sensorId — Delete Sensor",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensors/{{sensorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors", "{{sensorId}}"]
+            },
+            "description": "Deletes the sensor and removes its ID from the parent room's sensorIds list.\nAlso removes any stored readings for that sensor.\n\nExpected: 204 No Content"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Sensor Readings (Sub-Resource)",
+      "item": [
+        {
+          "name": "POST /sensors/:sensorId/readings — Add Reading",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 412.5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sensors/{{sensorId}}/readings",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors", "{{sensorId}}", "readings"]
+            },
+            "description": "Appends a new reading to the sensor's history.\n\nServer sets the ID (UUID) and timestamp automatically.\nSide effect: sensor.currentValue is updated to the new reading's value.\n\nExpected: 201 Created + Location header"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": \"r1r2r3r4-...\",\n  \"value\": 412.5,\n  \"timestamp\": 1745352761000\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET /sensors/:sensorId/readings — Get All Readings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/sensors/{{sensorId}}/readings",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors", "{{sensorId}}", "readings"]
+            },
+            "description": "Returns the full reading history for a sensor.\n\nExpected: 200 OK with array (empty [] if no readings yet)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Error Cases",
+      "item": [
+        {
+          "name": "409 — Delete Room WITH Sensors",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/{{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "{{roomId}}"]
+            },
+            "description": "Attempt to delete a room that still has sensors linked to it.\n\nPre-condition: make sure a sensor is registered in this room (run POST /sensors first).\n\nExpected: 409 Conflict\n{\n  \"status\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"Room '...' cannot be deleted because it still has sensors.\"\n}"
+          },
+          "response": [
+            {
+              "name": "409 Conflict — Room Not Empty",
+              "status": "Conflict",
+              "code": 409,
+              "body": "{\n  \"status\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"Room 'a1b2c3d4-...' cannot be deleted because it still has sensors. Remove all sensors first.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "422 — Register Sensor with Invalid roomId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"Temperature\",\n  \"roomId\": \"nonexistent-room-00000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sensors",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors"]
+            },
+            "description": "Attempt to register a sensor referencing a roomId that does not exist in the DataStore.\n\nExpected: 422 Unprocessable Entity"
+          },
+          "response": [
+            {
+              "name": "422 Unprocessable Entity — Linked Resource Not Found",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "body": "{\n  \"status\": 422,\n  \"error\": \"Unprocessable Entity\",\n  \"message\": \"Linked resource 'Room' with id 'nonexistent-room-00000' was not found.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "403 — Post Reading to MAINTENANCE Sensor (Step 1: Set MAINTENANCE)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"MAINTENANCE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sensors/{{sensorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors", "{{sensorId}}"]
+            },
+            "description": "Step 1 of 2: Set the sensor's status to MAINTENANCE.\nThen run the next request to trigger the 403 error.\n\nExpected: 200 OK with status: MAINTENANCE"
+          },
+          "response": []
+        },
+        {
+          "name": "403 — Post Reading to MAINTENANCE Sensor (Step 2: POST Reading)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 99.9\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sensors/{{sensorId}}/readings",
+              "host": ["{{baseUrl}}"],
+              "path": ["sensors", "{{sensorId}}", "readings"]
+            },
+            "description": "Step 2 of 2: Attempt to post a reading to a sensor that is in MAINTENANCE status.\n\nExpected: 403 Forbidden"
+          },
+          "response": [
+            {
+              "name": "403 Forbidden — Sensor Unavailable",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{\n  \"status\": 403,\n  \"error\": \"Forbidden\",\n  \"message\": \"Sensor '...' is currently MAINTENANCE and cannot accept readings.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "404 — Get Non-Existent Room",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rooms/room-does-not-exist",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms", "room-does-not-exist"]
+            },
+            "description": "Attempt to retrieve a room with an ID that doesn't exist.\n\nExpected: 404 Not Found"
+          },
+          "response": [
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{\n  \"status\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"The requested resource was not found.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "415 — Wrong Content-Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "name=Lab A101&capacity=30"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/rooms",
+              "host": ["{{baseUrl}}"],
+              "path": ["rooms"]
+            },
+            "description": "Send a POST with text/plain Content-Type instead of application/json.\n\nJersey rejects this automatically via @Consumes(APPLICATION_JSON).\n\nExpected: 415 Unsupported Media Type"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
