@@ -366,11 +366,9 @@ This is useful because it means we don't have to manually check the content type
 
 #### Q3.2 — `@QueryParam` vs Path Segment for Filtering
 
-Sensor type filtering uses `GET /sensors?type=CO2` rather than `GET /sensors/CO2`.
+We use `GET /sensors?type=CO2` instead of `GET /sensors/CO2` because query params are for optional filtering — they narrow down a collection. A path segment like `/sensors/CO2` would suggest that CO2 is its own separate resource, which it isn't.
 
-A path segment implies that the named thing is a **distinct, addressable resource** with its own identity. `GET /sensors/CO2` would suggest CO2 is a resource of its own, not a filter criterion. Sensor type is a narrowing parameter applied to the collection — not a resource — so a query parameter is semantically correct. Query parameters are designed precisely for optional, refinement-style operations on a collection.
-
-There is also a cacheability advantage: HTTP caches often key on the base URI (`/sensors`), treating query parameters separately. The base collection can be cached independently, whereas path-based filtering merges filtering and resource identity into one URL, making caching harder to reason about.
+Query parameters also make more sense semantically — the same endpoint works with or without them, and the base URL `/sensors` always refers to the full collection.
 
 ---
 
@@ -378,15 +376,15 @@ There is also a cacheability advantage: HTTP caches often key on the base URI (`
 
 #### Q4.1 — Sub-Resource Locator Architectural Benefits
 
-A sub-resource locator is a JAX-RS method annotated with `@Path` but with **no HTTP method annotation** (`@GET`, `@POST`, etc.). Instead of handling the request itself, it returns a plain Java object — the sub-resource — which Jersey then inspects for the matching HTTP method handler.
+A sub-resource locator is a method that has a `@Path` annotation but no HTTP method (`@GET`, `@POST`, etc.). Instead of handling the request, it just returns another object (the sub-resource) for Jersey to use.
 
-In this project, `SensorResource` contains a locator method that returns a `SensorReadingResource` instance constructed with the `sensorId` from the path. This design brings five architectural benefits:
+In this project, `SensorResource` has a locator method that returns a `SensorReadingResource` object. This is a good design because:
 
-1. **Separation of concerns** — `SensorResource` handles sensor CRUD; `SensorReadingResource` handles reading history. Neither class is aware of the other's implementation details, keeping each class focused and small.
-2. **Constructor-based context injection** — `SensorReadingResource` receives `sensorId` via its constructor as a plain Java argument, making it a normal object with no JAX-RS routing knowledge required.
-3. **Lazy instantiation** — Jersey only creates `SensorReadingResource` when the `/readings` path is actually requested, avoiding unnecessary object creation for requests that don't touch readings.
-4. **Testability** — `SensorReadingResource` can be unit-tested without a running JAX-RS container by simply constructing it with a test `sensorId` and calling its methods directly.
-5. **Clean URL hierarchy** — The nested path `/sensors/{id}/readings` naturally and readably expresses the parent-child ownership relationship between sensors and their readings.
+1. **Separation of concerns** — `SensorResource` deals with sensors, and `SensorReadingResource` deals with readings. They don't mix logic.
+2. **Easy context passing** — We can pass the `sensorId` straight into the `SensorReadingResource` constructor, so it doesn't need to worry about URL parsing.
+3. **Efficiency** — Jersey only creates the `SensorReadingResource` object if the user actually goes to the `/readings` path.
+4. **Easy to test** — Since `SensorReadingResource` is just a regular Java object, we can test it easily without starting up the whole JAX-RS server.
+5. **Clean URLs** — The path `/sensors/{id}/readings` is very clear and shows exactly how the data is connected.
 
 ---
 
@@ -394,35 +392,31 @@ In this project, `SensorResource` contains a locator method that returns a `Sens
 
 #### Q5.2 — HTTP 422 Unprocessable Entity vs 404 Not Found
 
-Both codes could superficially apply when a referenced resource is missing, but they carry different semantic meanings:
+Both codes could apply here but they mean different things. 404 means the URL itself doesn't exist. 422 means the URL is fine but the data in the request body doesn't make sense.
 
-- **404 Not Found** means the *requested URL itself* does not exist. It is the correct code when, for example, `GET /rooms/abc` is called and room `abc` does not exist — the resource identified by the URL is absent.
-- **422 Unprocessable Entity** means the request URL is valid and the body is syntactically correct JSON, but the content is semantically invalid and cannot be processed.
-
-When `POST /api/v1/sensors` is called with a `roomId` that does not exist, the endpoint `/api/v1/sensors` exists (so 404 would be wrong), and the body is valid JSON (so 400 would be wrong). The problem is that the `roomId` value inside the body refers to a room that doesn't exist — the request is semantically unprocessable. HTTP 422 captures this precisely. Using 404 here would be ambiguous; a client could reasonably think the `/sensors` endpoint itself was not found rather than understanding that a referenced entity was missing.
+When you `POST /api/v1/sensors` with a `roomId` that doesn't exist, the endpoint is valid and the JSON is valid — the problem is that the `roomId` value refers to something that doesn't exist. That's a semantic issue, so 422 is the right code. Using 404 would be confusing because a client might think the `/sensors` endpoint itself wasn't found.
 
 ---
 
 #### Q5.4 — Security Risks of Exposing Stack Traces
 
-Returning raw Java stack traces in HTTP error responses poses three categories of security risk:
+Returning stack traces in HTTP responses is risky for a few reasons:
 
-1. **Information leakage** — Stack traces reveal internal class names, method signatures, library versions, and file paths. An attacker can use this to identify the exact framework and version (enabling targeted exploit searches), map the internal package structure, and discover vulnerable third-party dependencies.
-2. **Sensitive data exposure** — Stack traces may inadvertently print variable values, query fragments, or configuration data that were on the call stack at the time of the exception, potentially exposing credentials, tokens, or business logic.
-3. **Reconnaissance** — Knowing the exact line number of a crash helps an attacker refine their attack vector without needing access to the source code.
+1. **Information leakage** — Stack traces show class names, method names, library versions, and file paths. An attacker can use this to figure out exactly what you're running and look for known exploits.
+2. **Sensitive data** — The stack might include variable values like tokens or config data that ended up on the call stack.
+3. **Easier attacks** — Knowing the exact line of a crash makes it easier to figure out how to trigger it.
 
-The mitigation in this project is implemented in `GlobalExceptionMapper`: it catches all `Throwable` instances, logs the full stack trace server-side to Tomcat's log (visible only to system administrators), and returns a safe, generic JSON body to the client — `"An unexpected error occurred. Please contact support."` The principle is: *log everything internally, expose nothing externally*.
+In this project, `GlobalExceptionMapper` catches all exceptions, logs the full details to the server log where only admins can see it, and just returns a generic error message to the client.
 
 ---
 
 #### Q5.5 — Why Filters Are Better Than Manual Logging
 
-Manual logging — calling `Logger.info(...)` at the start and end of every resource method — has serious drawbacks: it duplicates the same boilerplate in every endpoint, developers forget to add it to new endpoints, different developers produce inconsistent log formats, and changing the format requires editing every resource class. Logging is also a cross-cutting concern that has nothing to do with business logic, so embedding it inside resource methods violates the single-responsibility principle.
+If we added logging manually inside every resource method, we'd be copying the same code everywhere. It's also easy to forget it on new methods, and changing the format would mean editing every class.
 
-Filter-based logging via `ApiLoggingFilter` (implementing `ContainerRequestFilter` and `ContainerResponseFilter`) solves all of these problems:
+Using a filter is much cleaner. `ApiLoggingFilter` is registered once in `SmartCampusApplication` and automatically logs every request and response without touching the resource classes. The benefits are:
 
-1. **Single implementation** — Registered once in `SmartCampusApplication`, the filter intercepts every request and response automatically with no changes to resource classes.
-2. **Consistent format** — One place controls the log format for the entire API.
-3. **Zero boilerplate in resources** — Resource classes remain focused on business logic only.
-4. **Correct architectural layer** — Cross-cutting concerns belong in filters, not in business logic.
-5. **Toggleable** — Removing the filter from the `Application` class disables all API logging instantly without touching any resource code.
+1. **No duplicate code** — One class does all the logging.
+2. **Consistent format** — It's all managed in one place.
+3. **Cleaner resources** — Resource classes only deal with business logic.
+4. **Easy to turn off** — You can disable all logging just by removing the filter from the registration.
