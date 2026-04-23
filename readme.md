@@ -325,14 +325,14 @@ In this project, all the data — rooms, sensors, readings — is kept in the `D
 
 #### Q1.2 — HATEOAS and Hypermedia Benefits
 
-HATEOAS (Hypermedia As The Engine Of Application State) is the REST constraint that responses should include links to related or next-step resources, so clients can navigate the API dynamically instead of relying on hardcoded URLs.
+HATEOAS (Hypermedia As The Engine Of Application State) is a REST principle where responses include links to related resources, so clients can navigate the API without hardcoding URLs.
 
-In this project the discovery endpoint (`GET /api/v1`) returns a `_links` object pointing to the rooms and sensors collections. This brings four concrete benefits:
+In this project, the discovery endpoint (`GET /api/v1`) returns a `_links` object with URLs to the rooms and sensors collections. The benefits are:
 
-1. **Discoverability** — A new client only needs to know one URL (the root) and can discover all other endpoints from the response, reducing coupling to external documentation.
-2. **Evolvability** — If the `/rooms` path changes in a future version, clients that follow links from the discovery response automatically pick up the new path without code changes on their side.
-3. **Self-documenting** — The API response itself describes what actions are possible and where, acting as a live contract alongside any written documentation.
-4. **Reduced hardcoding** — Clients follow `href` values from responses rather than embedding paths, making integrations more maintainable and easier to test.
+1. **Discoverability** — A client only needs to know the root URL and can find everything else from the response.
+2. **Evolvability** — If a path changes in a future version, clients following the links will pick it up automatically without needing code changes.
+3. **Self-documenting** — The response itself shows what's available and where, which makes the API easier to explore.
+4. **Less hardcoding** — Clients use the href values from the response instead of building URLs themselves, which makes the integration easier to maintain.
 
 ---
 
