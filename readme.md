@@ -348,9 +348,9 @@ Returning full objects uses more bandwidth per response, but it saves the client
 
 #### Q2.2 — DELETE Idempotency
 
-RFC 9110 defines an idempotent method as one where applying it multiple times produces the same server-side state as applying it once. DELETE is idempotent by specification: calling `DELETE /rooms/abc` twice leaves the server in the same state both times — room `abc` does not exist.
+Idempotency means calling the same method multiple times should leave the server in the same state as calling it once. DELETE is idempotent — calling `DELETE /rooms/abc` twice results in the same outcome both times: room `abc` doesn't exist.
 
-In this implementation the first call deletes the room and returns `204 No Content`. The second call finds nothing and returns `404 Not Found`. The HTTP response code differs, but the server state is identical: the room is absent. This satisfies idempotency per the RFC. Returning `404` on the second call is preferable to returning `204` again because it gives the client honest, accurate feedback — the resource was already gone — without misrepresenting a no-op as a successful deletion.
+In this implementation, the first DELETE returns `204 No Content`. The second call finds nothing and returns `404 Not Found`. The response code is different, but the server state is the same both times — the room is gone. We return `404` on the second call rather than `204` again because it's more honest — it tells the client the room was already gone, rather than pretending the delete worked when there was nothing to delete.
 
 ---
 
@@ -358,12 +358,9 @@ In this implementation the first call deletes the room and returns `204 No Conte
 
 #### Q3.1 — `@Consumes` Annotation and Format Mismatch Consequences
 
-`@Consumes(MediaType.APPLICATION_JSON)` declares the acceptable `Content-Type` for incoming request bodies. When Jersey sees this annotation on a method, it acts as a gate before the method body runs:
+`@Consumes(MediaType.APPLICATION_JSON)` tells Jersey what Content-Type the endpoint accepts. If the client sends the wrong type (e.g. `text/plain`), Jersey automatically returns 415 Unsupported Media Type before our code even runs.
 
-- **Matching Content-Type** (`application/json`): Jersey deserialises the body via Jackson and passes the resulting Java object to the method.
-- **Mismatching Content-Type** (`text/plain`, `application/xml`, etc.): Jersey rejects the request immediately and returns `415 Unsupported Media Type` — the method body never executes.
-
-Declaring `@Consumes` explicitly prevents malformed or unexpected data from reaching business logic, provides a clear machine-readable contract to API consumers, eliminates the need for manual content-type checking inside every method, and fails fast with an unambiguous error rather than a mysterious `NullPointerException` further down the call stack.
+This is useful because it means we don't have to manually check the content type inside every method. It also prevents badly formatted data from reaching the business logic and causing confusing errors later on.
 
 ---
 
