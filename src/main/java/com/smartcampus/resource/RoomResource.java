@@ -10,14 +10,14 @@ import java.net.URI;
 import java.util.*;
 
 /**
- * JAX-RS resource managing the /api/v1/rooms collection.
+ * Handles all the CRUD operations for rooms at /api/v1/rooms.
  *
  * Endpoints:
  *   GET    /rooms              → list all rooms
- *   POST   /rooms              → create a new room (201 + Location header)
- *   GET    /rooms/{roomId}     → get a single room (404 if missing)
- *   PUT    /rooms/{roomId}     → update an existing room (404 if missing)
- *   DELETE /rooms/{roomId}     → delete room; guard: 409 if sensors still present
+ *   POST   /rooms              → create a new room (returns 201 + Location header)
+ *   GET    /rooms/{roomId}     → get a single room by ID (404 if not found)
+ *   PUT    /rooms/{roomId}     → update an existing room (404 if not found)
+ *   DELETE /rooms/{roomId}     → delete a room, but blocked with 409 if it still has sensors
  */
 @Path("/rooms")
 @Produces(MediaType.APPLICATION_JSON)
@@ -26,18 +26,14 @@ public class RoomResource {
 
     private final DataStore store = DataStore.getInstance();
 
-    // =========================================================================
-    // GET /rooms — return all rooms as a JSON list
-    // =========================================================================
+    // GET /rooms — return all rooms
 
     /**
-     * Returns the complete list of rooms.
+     * Returns a list of all rooms in the system.
      *
-     * Report Q2.1: We return the full Room objects (including their sensorIds list)
-     * rather than just IDs.  The trade-off is a slightly larger payload, but it saves
-     * clients from making N extra round-trips to resolve each room — a classic
-     * "over-fetching vs chattiness" decision. For a campus dashboard that always
-     * renders the full room list, returning full objects is the right choice.
+     * We return full Room objects including their sensor IDs so the client
+     * doesn't need to make extra calls just to see what's in each room.
+     * It's a bit more data but it saves a lot of round-trips.
      */
     @GET
     public Response getAllRooms() {
@@ -45,14 +41,12 @@ public class RoomResource {
         return Response.ok(roomList).build();
     }
 
-    // =========================================================================
     // POST /rooms — create a new room
-    // =========================================================================
 
     /**
-     * Creates a new room.
-     * If the request body omits an ID, a UUID is auto-generated.
-     * Returns 201 Created with a Location header pointing to the new resource.
+     * Creates a new room and saves it to the store.
+     * If no ID is given in the request body, we generate one automatically.
+     * Returns 201 Created with a Location header pointing to the new room.
      */
     @POST
     public Response createRoom(Room room, @Context UriInfo uriInfo) {
@@ -62,19 +56,19 @@ public class RoomResource {
                     .build();
         }
 
-        // Auto-generate ID if the client did not supply one
+        // If no ID was sent, generate one
         if (room.getId() == null || room.getId().isBlank()) {
             room.setId(UUID.randomUUID().toString());
         }
 
-        // Guard: ID conflict
+        // If a room with this ID already exists, reject with 409
         if (store.getRooms().containsKey(room.getId())) {
             return Response.status(Response.Status.CONFLICT)
                     .entity(Map.of("error", "A room with id '" + room.getId() + "' already exists."))
                     .build();
         }
 
-        // Ensure sensorIds list is initialised
+        // Make sure the sensorIds list isn't null
         if (room.getSensorIds() == null) {
             room.setSensorIds(new ArrayList<>());
         }
@@ -88,12 +82,10 @@ public class RoomResource {
         return Response.created(location).entity(room).build();
     }
 
-    // =========================================================================
-    // GET /rooms/{roomId} — get a single room
-    // =========================================================================
+    // GET /rooms/{roomId} — fetch one room by ID
 
     /**
-     * Returns a single room by ID, or 404 if it does not exist.
+     * Looks up a room by its ID and returns it, or 404 if it doesn't exist.
      */
     @GET
     @Path("{roomId}")
@@ -109,13 +101,11 @@ public class RoomResource {
         return Response.ok(room).build();
     }
 
-    // =========================================================================
-    // PUT /rooms/{roomId} — update an existing room
-    // =========================================================================
+    // PUT /rooms/{roomId} — update a room
 
     /**
-     * Replaces an existing room's mutable fields (name, capacity).
-     * The ID in the path is authoritative; any ID supplied in the body is ignored.
+     * Updates the name and/or capacity of an existing room.
+     * We use the ID from the URL path — any ID in the request body is ignored.
      */
     @PUT
     @Path("{roomId}")
@@ -139,21 +129,16 @@ public class RoomResource {
         return Response.ok(existing).build();
     }
 
-    // =========================================================================
-    // DELETE /rooms/{roomId} — delete a room (guarded)
-    // =========================================================================
+    // DELETE /rooms/{roomId} — remove a room
 
     /**
-     * Deletes a room identified by roomId.
+     * Deletes a room by ID.
      *
-     * Guard: if the room still has sensors, throws RoomNotEmptyException.
-     * The ExceptionMapper (Day 4) will turn that into HTTP 409 Conflict.
+     * If the room still has sensors linked to it, we throw a RoomNotEmptyException
+     * which the ExceptionMapper converts to a 409 Conflict.
      *
-     * Report Q2.2 — DELETE idempotency:
-     * REST DELETE should be idempotent: calling it multiple times has the same
-     * server-side effect as calling it once. We return 404 on a missing room
-     * (rather than 204) so clients know the resource was already gone — this
-     * is acceptable per RFC 9110; the state of the server is still "room absent".
+     * We return 404 if the room doesn't exist, so the client knows it's already gone.
+     * The server state is the same either way — no room — so this is still idempotent.
      */
     @DELETE
     @Path("{roomId}")
@@ -167,12 +152,12 @@ public class RoomResource {
                     .build();
         }
 
-        // Guard: room still has sensors → 409 (mapper wired on Day 4)
+        // If the room still has sensors, block the delete
         if (room.getSensorIds() != null && !room.getSensorIds().isEmpty()) {
             throw new RoomNotEmptyException(roomId);
         }
 
         store.getRooms().remove(roomId);
-        return Response.noContent().build();   // 204 No Content
+        return Response.noContent().build(); // 204 No Content — successful delete
     }
 }
