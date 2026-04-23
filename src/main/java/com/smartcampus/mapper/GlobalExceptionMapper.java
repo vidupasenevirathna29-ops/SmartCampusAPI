@@ -9,9 +9,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Global exception mapper to catch any unhandled Throwables.
- * Maps to HTTP 500 Internal Server Error, returning a safe generic message
- * and preventing stack traces from leaking to the client.
+ * This is a catch-all exception mapper for anything we didn't handle specifically.
+ * If something unexpected goes wrong, we don't want to expose the stack trace to the client,
+ * so we log it on the server and just return a generic 500 error message.
  */
 @Provider
 public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
@@ -20,10 +20,10 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
 
     @Override
     public Response toResponse(Throwable exception) {
-        // Log the actual exception securely on the server side — never expose the stack trace to the client
+        // Log the full error on the server so we can debug it, but don't send it to the client
         LOGGER.log(Level.SEVERE, "Unhandled server exception: " + exception.getMessage(), exception);
 
-        // Return a generic safe message to the client
+        // Just send a plain 500 response with a safe message
         return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(Map.of(
                         "error", "Internal Server Error",
