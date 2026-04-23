@@ -4,26 +4,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Represents a physical room on the Smart Campus.
- * Rooms contain sensors that monitor environmental conditions.
+ * This class represents a room in the campus.
+ * Each room can have multiple sensors attached to it that track things like temperature and humidity.
  */
 public class Room {
 
-    /** Unique identifier, e.g. "LIB-301" */
+    /** Unique ID for this room, like "LIB-301" */
     private String id;
 
-    /** Human-readable name, e.g. "Library Quiet Study" */
+    /** A display name for the room, e.g. "Library Quiet Study" */
     private String name;
 
-    /** Maximum occupancy for safety regulations */
+    /** How many people the room can hold */
     private int capacity;
 
-    /** Collection of sensor IDs deployed in this room */
+    /** List of sensor IDs that are installed in this room */
     private List<String> sensorIds = new ArrayList<>();
 
-    // -------------------------------------------------------------------------
     // Constructors
-    // -------------------------------------------------------------------------
 
     public Room() {
     }
@@ -34,9 +32,7 @@ public class Room {
         this.capacity = capacity;
     }
 
-    // -------------------------------------------------------------------------
-    // Getters & Setters
-    // -------------------------------------------------------------------------
+    // Getters and Setters
 
     public String getId() {
         return id;
