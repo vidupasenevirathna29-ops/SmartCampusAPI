@@ -16,3 +16,6 @@ Thumbs.db
 # IntelliJ
 *.iws
 out/
+
+# Study / planning files — not part of submission
+STUDY_PLAN.md
