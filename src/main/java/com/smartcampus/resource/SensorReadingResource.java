@@ -11,15 +11,13 @@ import java.net.URI;
 import java.util.*;
 
 /**
- * Sub-resource for sensor reading history.
- * Accessed via the sub-resource locator in SensorResource:
+ * This class handles reading history for a specific sensor.
+ * It's used as a sub-resource from SensorResource, so it doesn't have its own @Path.
+ * Jersey creates it through the locator in SensorResource.
+ *
+ * Supports:
  *   GET  /api/v1/sensors/{sensorId}/readings
  *   POST /api/v1/sensors/{sensorId}/readings
- *
- * NOT registered as a root resource — no @Path annotation at class level.
- * Jersey instantiates this class through the locator in SensorResource.
- *
- * Day 3 implementation complete.
  */
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -29,17 +27,15 @@ public class SensorReadingResource {
     private final DataStore store;
 
     /**
-     * Constructor called by the sub-resource locator in SensorResource.
-     * Receives the sensorId from the URL path.
+     * Called by the sub-resource locator in SensorResource.
+     * Gets the sensorId from the URL so we know which sensor to work with.
      */
     public SensorReadingResource(String sensorId) {
         this.sensorId = sensorId;
         this.store = DataStore.getInstance();
     }
 
-    // =========================================================================
-    // GET /sensors/{sensorId}/readings — return all readings for this sensor
-    // =========================================================================
+    // GET /sensors/{sensorId}/readings — get all readings for this sensor
 
     @GET
     public Response getReadings() {
@@ -58,25 +54,20 @@ public class SensorReadingResource {
         return Response.ok(readings).build();
     }
 
-    // =========================================================================
-    // POST /sensors/{sensorId}/readings — append a new reading
-    // =========================================================================
+    // POST /sensors/{sensorId}/readings — add a new reading
 
     /**
-     * Appends a new reading to the sensor's history.
+     * Adds a new reading to the sensor's history.
      *
-     * Business rules (enforced on Day 3):
-     *   - Sensor must exist (404)
-     *   - Sensor status must NOT be "MAINTENANCE" (throws SensorUnavailableException → 403)
-     *   - ID is auto-generated (UUID)
-     *   - Timestamp is set server-side to System.currentTimeMillis()
-     *   - Side effect: sensor.currentValue is updated to the new reading's value
-     *
-     * Day 3 implementation complete.
+     * Rules we enforce:
+     *   - The sensor must exist, otherwise 404
+     *   - The sensor can't be in MAINTENANCE or OFFLINE status (returns 403)
+     *   - We generate the ID and timestamp on the server side
+     *   - We also update the sensor's currentValue with the new reading
      */
     @POST
     public Response addReading(SensorReading reading, @Context UriInfo uriInfo) {
-        // Validate request body first
+        // Make sure the request body isn't empty
         if (reading == null) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(Map.of("error", "Request body must be a valid SensorReading JSON object."))
@@ -92,20 +83,20 @@ public class SensorReadingResource {
                     .build();
         }
 
-        // Guard: sensor under maintenance or offline cannot accept readings
+        // Block the request if the sensor isn't active
         if ("MAINTENANCE".equalsIgnoreCase(sensor.getStatus())
                 || "OFFLINE".equalsIgnoreCase(sensor.getStatus())) {
             throw new SensorUnavailableException(sensorId, sensor.getStatus());
         }
 
-        // Server-side metadata
+        // Set the ID and timestamp here on the server
         reading.setId(UUID.randomUUID().toString());
         reading.setTimestamp(System.currentTimeMillis());
 
-        // Side effect: update the sensor's current value
+        // Update the sensor's current reading value
         sensor.setCurrentValue(reading.getValue());
 
-        // Persist the reading
+        // Save the reading to the store
         store.getSensorReadings()
                 .computeIfAbsent(sensorId, k -> new ArrayList<>())
                 .add(reading);
