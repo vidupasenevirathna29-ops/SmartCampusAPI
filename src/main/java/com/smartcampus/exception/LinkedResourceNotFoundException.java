@@ -1,10 +1,11 @@
 package com.smartcampus.exception;
 
 /**
- * Thrown when a resource references another resource that does not exist.
- * Primary use-case: POST /sensors with a roomId that does not match any Room.
+ * This exception is thrown when you try to link a sensor to a room that doesn't exist.
+ * For example, if someone sends a POST /sensors request with a roomId that we can't find,
+ * we throw this instead of letting it fail silently.
  *
- * The ExceptionMapper (Day 4) will convert this into HTTP 422 Unprocessable Entity.
+ * The ExceptionMapper picks this up and returns a 422 Unprocessable Entity response.
  */
 public class LinkedResourceNotFoundException extends RuntimeException {
 
