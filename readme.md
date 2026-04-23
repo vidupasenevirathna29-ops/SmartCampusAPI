@@ -2,7 +2,7 @@
 
 ## API Overview
 
-Smart Campus API is a RESTful web service built with **JAX-RS 2.1 (Jersey 2.41)** deployed on **Apache Tomcat 9**. It manages campus **rooms** and the **environmental sensors** installed in them, including a full reading history per sensor. All data is stored in-memory using `HashMap` and `ArrayList` via a singleton `DataStore` — no database is used.
+Smart Campus API is a JAX-RS (Jersey 2.41) REST API deployed on Tomcat 9. It lets you manage campus **rooms** and the **sensors** inside them, and keeps a history of readings for each sensor. All data is kept in memory using `HashMap` and `ArrayList` inside a singleton `DataStore` — there's no database.
 
 **Base URL:** `http://localhost:8080/api/v1`
 
