@@ -12,14 +12,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * JAX-RS resource managing the /api/v1/sensors collection.
+ * Handles all CRUD operations for sensors at /api/v1/sensors.
  *
  * Endpoints:
- *   POST   /sensors                        → register a new sensor (validates roomId)
- *   GET    /sensors                        → list all sensors; optional ?type= filter
- *   GET    /sensors/{sensorId}             → get a single sensor (404 if missing)
+ *   POST   /sensors                        → register a new sensor (checks that roomId exists)
+ *   GET    /sensors                        → list all sensors; supports optional ?type= filter
+ *   GET    /sensors/{sensorId}             → get one sensor by ID (404 if not found)
  *   PUT    /sensors/{sensorId}             → update sensor fields
- *   DELETE /sensors/{sensorId}             → remove sensor, update parent room's sensorIds
+ *   DELETE /sensors/{sensorId}             → remove sensor and unlink it from the parent room
  *
  * Sub-resource locator:
  *   /sensors/{sensorId}/readings           → delegates to SensorReadingResource
@@ -31,26 +31,22 @@ public class SensorResource {
 
     private final DataStore store = DataStore.getInstance();
 
-    // =========================================================================
     // POST /sensors — register a new sensor
-    // =========================================================================
 
     /**
-     * Registers a new sensor.
+     * Registers a new sensor in the system.
      *
-     * Validates that the supplied roomId exists.  If it does not,
-     * throws LinkedResourceNotFoundException (mapper → 422 on Day 4).
+     * We check that the roomId actually points to a real room before saving.
+     * If the room doesn't exist, we throw LinkedResourceNotFoundException which
+     * gets converted to a 422 response.
      *
      * On success:
-     *   - Sensor is stored in DataStore.sensors
-     *   - Sensor ID is appended to the parent Room's sensorIds list
-     *   - Returns 201 Created with Location header and the full sensor body
+     *   - Sensor is saved to the DataStore
+     *   - Sensor ID is added to the parent room's sensorIds list
+     *   - Returns 201 Created with a Location header
      *
-     * Report Q3.1 — @Consumes:
-     * Annotating with @Consumes(APPLICATION_JSON) tells Jersey to reject any
-     * request whose Content-Type is not application/json with 415 Unsupported
-     * Media Type before the method body even runs — preventing malformed data
-     * from reaching business logic.
+     * Using @Consumes(APPLICATION_JSON) means Jersey automatically rejects
+     * requests with the wrong Content-Type before we even see them.
      */
     @POST
     public Response registerSensor(Sensor sensor, @Context UriInfo uriInfo) {
@@ -60,7 +56,7 @@ public class SensorResource {
                     .build();
         }
 
-        // Validate parent room exists
+        // Make sure a roomId was provided
         String roomId = sensor.getRoomId();
         if (roomId == null || roomId.isBlank()) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -70,30 +66,30 @@ public class SensorResource {
 
         Room parentRoom = store.getRooms().get(roomId);
         if (parentRoom == null) {
-            // Throws → ExceptionMapper converts to 422 Unprocessable Entity
+            // Room doesn't exist — ExceptionMapper will turn this into 422
             throw new LinkedResourceNotFoundException("Room", roomId);
         }
 
-        // Auto-generate ID if absent
+        // Generate an ID if the client didn't provide one
         if (sensor.getId() == null || sensor.getId().isBlank()) {
             sensor.setId(UUID.randomUUID().toString());
         }
 
-        // Guard: ID conflict
+        // Reject if another sensor already has this ID
         if (store.getSensors().containsKey(sensor.getId())) {
             return Response.status(Response.Status.CONFLICT)
                     .entity(Map.of("error", "A sensor with id '" + sensor.getId() + "' already exists."))
                     .build();
         }
 
-        // Default status if omitted
+        // If no status was given, default it to ACTIVE
         if (sensor.getStatus() == null || sensor.getStatus().isBlank()) {
             sensor.setStatus("ACTIVE");
         }
 
         store.getSensors().put(sensor.getId(), sensor);
 
-        // Side-effect: link sensor ID to parent room
+        // Also add this sensor's ID to the room so the room knows about it
         parentRoom.getSensorIds().add(sensor.getId());
 
         URI location = uriInfo.getAbsolutePathBuilder()
@@ -103,22 +99,16 @@ public class SensorResource {
         return Response.created(location).entity(sensor).build();
     }
 
-    // =========================================================================
-    // GET /sensors — list all sensors, with optional ?type= filter
-    // =========================================================================
+    // GET /sensors — list all sensors with optional ?type= filter
 
     /**
-     * Returns all sensors.  Optionally filter by sensor type using the
-     * {@code ?type=} query parameter (case-insensitive).
+     * Returns all sensors, or a filtered list if a ?type= query param is given.
      *
      * Example: GET /api/v1/sensors?type=CO2
      *
-     * Report Q3.2 — @QueryParam vs path segment:
-     * Filtering is an optional, optional narrowing of a collection — not a
-     * distinct resource — so a query parameter (?type=CO2) is semantically
-     * correct.  A path segment (/sensors/CO2) would imply CO2 is its own
-     * addressable resource, which it is not.  Query params are also ignored
-     * by caches that key on the base URI, giving better cache-ability.
+     * We use a query param instead of a path segment because filtering is optional —
+     * it narrows down the collection rather than identifying a separate resource.
+     * Something like /sensors/CO2 would imply CO2 is its own resource, which it isn't.
      */
     @GET
     public Response getAllSensors(@QueryParam("type") String type) {
@@ -134,9 +124,7 @@ public class SensorResource {
         return Response.ok(result).build();
     }
 
-    // =========================================================================
-    // GET /sensors/{sensorId} — get a single sensor
-    // =========================================================================
+    // GET /sensors/{sensorId} — fetch a single sensor by ID
 
     @GET
     @Path("{sensorId}")
@@ -152,13 +140,11 @@ public class SensorResource {
         return Response.ok(sensor).build();
     }
 
-    // =========================================================================
-    // PUT /sensors/{sensorId} — update sensor fields
-    // =========================================================================
+    // PUT /sensors/{sensorId} — update a sensor
 
     /**
-     * Updates mutable sensor fields: type, status, currentValue.
-     * The ID and roomId are immutable after creation.
+     * Updates one or more fields on an existing sensor (type, status, currentValue).
+     * The sensor ID and roomId can't be changed after creation.
      */
     @PUT
     @Path("{sensorId}")
@@ -178,19 +164,18 @@ public class SensorResource {
         if (updated.getStatus() != null && !updated.getStatus().isBlank()) {
             existing.setStatus(updated.getStatus());
         }
-        // currentValue 0.0 is a valid reading, so we always accept it when explicitly provided
+        // 0.0 is a valid reading value, so we always update currentValue
         existing.setCurrentValue(updated.getCurrentValue());
 
         return Response.ok(existing).build();
     }
 
-    // =========================================================================
-    // DELETE /sensors/{sensorId} — remove sensor and unlink from room
-    // =========================================================================
+    // DELETE /sensors/{sensorId} — remove a sensor and clean up
 
     /**
-     * Deletes a sensor and removes its ID from the parent room's sensorIds list.
-     * Returns 204 No Content on success.
+     * Deletes a sensor and removes it from the parent room's sensor list.
+     * Also clears any stored readings for this sensor.
+     * Returns 204 No Content if successful.
      */
     @DELETE
     @Path("{sensorId}")
@@ -204,34 +189,28 @@ public class SensorResource {
                     .build();
         }
 
-        // Unlink from parent room
+        // Remove this sensor from the room's list
         Room parentRoom = store.getRooms().get(sensor.getRoomId());
         if (parentRoom != null) {
             parentRoom.getSensorIds().remove(sensorId);
         }
 
         store.getSensors().remove(sensorId);
-        // Also clean up any stored readings
+        // Clean up any readings stored for this sensor too
         store.getSensorReadings().remove(sensorId);
 
-        return Response.noContent().build();   // 204 No Content
+        return Response.noContent().build(); // 204 No Content
     }
 
-    // =========================================================================
-    // Sub-Resource Locator — /sensors/{sensorId}/readings  (Day 3)
-    // =========================================================================
+    // Sub-Resource Locator — /sensors/{sensorId}/readings
 
     /**
-     * Sub-resource locator for sensor readings history.
-     * NO HTTP method annotation — Jersey calls this to resolve the sub-resource
-     * class, then dispatches the actual HTTP method to SensorReadingResource.
+     * This locator method hands off requests to SensorReadingResource.
+     * It doesn't have an HTTP method annotation — Jersey uses it to figure out
+     * which class should handle the /readings path, then routes the actual request there.
      *
-     * Report Q4.1 — Sub-Resource Locator benefits:
-     * The locator pattern separates concerns cleanly: SensorReadingResource knows
-     * nothing about routing; SensorResource knows nothing about reading business
-     * logic. It also enables Jersey to lazily instantiate the sub-resource only
-     * when that path is actually requested, and allows the sub-resource to receive
-     * context (sensorId) via its constructor rather than through injection.
+     * This keeps the reading logic separate from the sensor routing logic,
+     * and lets us pass the sensorId directly into the sub-resource via its constructor.
      */
     @Path("{sensorId}/readings")
     public SensorReadingResource getReadingsResource(@PathParam("sensorId") String sensorId) {
