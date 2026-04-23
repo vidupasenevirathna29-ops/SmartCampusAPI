@@ -10,27 +10,24 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * In-memory data store for the Smart Campus API.
+ * This is the in-memory data store for the whole application.
  *
- * SINGLETON PATTERN — only one instance exists for the entire application lifetime.
+ * It uses the Singleton pattern so there's only ever one instance running.
  *
- * WHY A SINGLETON?
- * JAX-RS resource classes are instantiated fresh for EVERY incoming HTTP request
- * (request-scoped by default). If we stored our maps inside resource classes,
- * all data would be lost after each request. By centralising state here in a
- * singleton, every resource instance reads from and writes to the same shared maps,
- * giving us persistent in-memory data across the lifetime of the server.
+ * Why Singleton?
+ * JAX-RS creates a new resource class instance for every HTTP request, so if we kept
+ * our data inside the resource classes it would disappear after each request.
+ * Putting everything here in a singleton means all requests share the same maps
+ * and data stays alive as long as the server is running.
  *
- * THREAD SAFETY NOTE:
- * For this coursework, basic HashMap is used. In a production system you would
- * use ConcurrentHashMap and synchronised blocks (or java.util.concurrent locks)
- * to prevent race conditions under concurrent load.
+ * Thread safety:
+ * We're using basic HashMaps here which is fine for this coursework.
+ * In a real production system you'd want ConcurrentHashMap to handle
+ * multiple requests hitting the same data at the same time.
  */
 public class DataStore {
 
-    // -------------------------------------------------------------------------
-    // Singleton — eager initialisation (thread-safe, no lazy-init complexity)
-    // -------------------------------------------------------------------------
+    // Singleton setup — created once when the class loads
     private static final DataStore INSTANCE = new DataStore();
 
     private DataStore() {
@@ -41,25 +38,21 @@ public class DataStore {
         return INSTANCE;
     }
 
-    // -------------------------------------------------------------------------
-    // In-memory collections
-    // -------------------------------------------------------------------------
+    // The main in-memory collections
 
-    /** Master map of all rooms. Key = room ID */
+    /** Stores all rooms, keyed by room ID */
     private final Map<String, Room> rooms = new HashMap<>();
 
-    /** Master map of all sensors. Key = sensor ID */
+    /** Stores all sensors, keyed by sensor ID */
     private final Map<String, Sensor> sensors = new HashMap<>();
 
     /**
-     * Historical readings per sensor.
-     * Key = sensor ID, Value = ordered list of readings (newest last).
+     * Stores reading history for each sensor.
+     * Key = sensor ID, Value = list of readings in the order they were added.
      */
     private final Map<String, List<SensorReading>> sensorReadings = new HashMap<>();
 
-    // -------------------------------------------------------------------------
-    // Accessors
-    // -------------------------------------------------------------------------
+    // Getters
 
     public Map<String, Room> getRooms() {
         return rooms;
@@ -73,16 +66,14 @@ public class DataStore {
         return sensorReadings;
     }
 
-    // -------------------------------------------------------------------------
-    // Seed data — pre-loaded examples for demo and Postman testing
-    // -------------------------------------------------------------------------
+    // Seed data — loaded on startup so the API is ready to test straight away
 
     /**
-     * Populates the store with realistic sample data so the API is immediately
-     * testable after deployment without any manual POST requests.
+     * Loads some example rooms, sensors and readings when the app starts.
+     * This means you can test all the endpoints straight away without having to POST any data first.
      */
     private void seedData() {
-        // --- Rooms ---
+        // Create some sample rooms
         Room lib301 = new Room("LIB-301", "Library Quiet Study", 50);
         Room lab202 = new Room("LAB-202", "Computer Science Lab", 30);
         Room hall1  = new Room("HALL-1",  "Main Lecture Hall",   200);
@@ -91,7 +82,7 @@ public class DataStore {
         rooms.put(lab202.getId(), lab202);
         rooms.put(hall1.getId(),  hall1);
 
-        // --- Sensors ---
+        // Create some sample sensors
         Sensor temp001 = new Sensor("TEMP-001", "Temperature", "ACTIVE",   22.5, "LIB-301");
         Sensor co2001  = new Sensor("CO2-001",  "CO2",         "ACTIVE",  412.0, "LIB-301");
         Sensor occ001  = new Sensor("OCC-001",  "Occupancy",   "ACTIVE",   14.0, "LAB-202");
@@ -102,13 +93,13 @@ public class DataStore {
         sensors.put(occ001.getId(),  occ001);
         sensors.put(temp002.getId(), temp002);
 
-        // --- Link sensors to rooms ---
+        // Connect each sensor to its room
         lib301.getSensorIds().add("TEMP-001");
         lib301.getSensorIds().add("CO2-001");
         lab202.getSensorIds().add("OCC-001");
         lab202.getSensorIds().add("TEMP-002");
 
-        // --- Seed some historical readings for TEMP-001 ---
+        // Add a few sample historical readings for TEMP-001
         List<SensorReading> temp001Readings = new ArrayList<>();
         temp001Readings.add(new SensorReading("read-001", System.currentTimeMillis() - 3600000, 21.0));
         temp001Readings.add(new SensorReading("read-002", System.currentTimeMillis() - 1800000, 22.0));
