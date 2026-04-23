@@ -1,10 +1,10 @@
 package com.smartcampus.exception;
 
 /**
- * Thrown when a DELETE /rooms/{id} is attempted but the room still
- * has one or more sensors assigned to it.
+ * This exception is used when someone tries to delete a room that still has sensors in it.
+ * We don't allow that because deleting the room would leave orphaned sensors in the system.
  *
- * The ExceptionMapper (Day 4) will convert this into HTTP 409 Conflict.
+ * The ExceptionMapper will catch this and send back a 409 Conflict response.
  */
 public class RoomNotEmptyException extends RuntimeException {
 
