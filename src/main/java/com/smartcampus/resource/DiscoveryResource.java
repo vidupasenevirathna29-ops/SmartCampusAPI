@@ -9,13 +9,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Discovery / Root endpoint — GET /api/v1/
+ * This is the root endpoint of the API — GET /api/v1/
  *
- * Returns API metadata including version, contact info, and a map of
- * available resource collections. This implements a basic form of HATEOAS
- * (Hypermedia As The Engine Of Application State) by providing navigation
- * links so clients can discover endpoints without relying solely on
- * external documentation.
+ * It returns some basic info about the API like the version and contact details,
+ * along with links to the main resources (rooms and sensors).
+ * The _links section is a simple way to help clients find the available endpoints
+ * without having to guess the URLs.
  */
 @Path("/")
 public class DiscoveryResource {
@@ -24,12 +23,12 @@ public class DiscoveryResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response discover() {
 
-        // --- Links map (basic HATEOAS) ---
+        // Build the links map so clients know where to find rooms and sensors
         Map<String, String> links = new HashMap<>();
         links.put("rooms",   "/api/v1/rooms");
         links.put("sensors", "/api/v1/sensors");
 
-        // --- Full response body ---
+        // Put together the full response with API metadata and the links
         Map<String, Object> response = new HashMap<>();
         response.put("name",        "Smart Campus API");
         response.put("version",     "1.0");
