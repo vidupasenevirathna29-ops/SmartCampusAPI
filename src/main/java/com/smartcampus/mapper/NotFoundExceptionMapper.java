@@ -8,8 +8,9 @@ import javax.ws.rs.ext.Provider;
 import java.util.Map;
 
 /**
- * Exception mapper for standard JAX-RS NotFoundException.
- * Maps to HTTP 404 Not Found.
+ * This handles the standard JAX-RS NotFoundException.
+ * If someone hits an endpoint or resource that doesn't exist, we return a clean 404 JSON response
+ * instead of letting Jersey throw its own default error.
  */
 @Provider
 public class NotFoundExceptionMapper implements ExceptionMapper<NotFoundException> {
