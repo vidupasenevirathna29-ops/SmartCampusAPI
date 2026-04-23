@@ -9,11 +9,11 @@ import java.io.IOException;
 import java.util.logging.Logger;
 
 /**
- * API observability filter — logs every request and response.
- * Day 4 implementation complete.
+ * This filter logs every incoming request and outgoing response.
+ * It's a simple way to keep track of what's hitting the API and what we're sending back.
  *
- * Implements both ContainerRequestFilter and ContainerResponseFilter
- * as required by Part 5.5 of the coursework.
+ * It implements both ContainerRequestFilter and ContainerResponseFilter
+ * so we can hook into both sides of the request lifecycle.
  */
 @Provider
 public class ApiLoggingFilter implements ContainerRequestFilter, ContainerResponseFilter {
