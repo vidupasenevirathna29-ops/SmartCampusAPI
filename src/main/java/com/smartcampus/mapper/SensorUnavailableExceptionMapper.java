@@ -8,8 +8,9 @@ import javax.ws.rs.ext.Provider;
 import java.util.Map;
 
 /**
- * Exception mapper for SensorUnavailableException.
- * Maps to HTTP 403 Forbidden.
+ * This mapper handles the SensorUnavailableException.
+ * If someone tries to post a reading to a sensor that's in MAINTENANCE or OFFLINE,
+ * we block it here and return a 403 Forbidden with details about the sensor's current status.
  */
 @Provider
 public class SensorUnavailableExceptionMapper implements ExceptionMapper<SensorUnavailableException> {
