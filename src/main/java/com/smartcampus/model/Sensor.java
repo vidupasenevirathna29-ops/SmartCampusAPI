@@ -1,32 +1,30 @@
 package com.smartcampus.model;
 
 /**
- * Represents a sensor deployed within a campus room.
- * Sensors record real-time measurements (temperature, CO2, occupancy, etc.).
+ * This class represents a sensor that is installed in a campus room.
+ * Each sensor has a type, a current value, and a status to show if it's working or not.
  */
 public class Sensor {
 
-    /** Unique identifier, e.g. "TEMP-001" */
+    /** Unique ID for the sensor, e.g. "TEMP-001" */
     private String id;
 
-    /** Category of sensor: "Temperature", "CO2", "Occupancy", "Lighting" */
+    /** What the sensor measures — e.g. "Temperature", "CO2", "Occupancy", "Lighting" */
     private String type;
 
     /**
-     * Current operational state.
-     * Valid values: "ACTIVE", "MAINTENANCE", "OFFLINE"
+     * Whether the sensor is currently working or not.
+     * Can be "ACTIVE", "MAINTENANCE", or "OFFLINE".
      */
     private String status;
 
-    /** The most recent measurement recorded by this sensor */
+    /** The last reading value recorded by this sensor */
     private double currentValue;
 
-    /** Foreign key — links this sensor to its parent Room */
+    /** The ID of the room this sensor belongs to */
     private String roomId;
 
-    // -------------------------------------------------------------------------
     // Constructors
-    // -------------------------------------------------------------------------
 
     public Sensor() {
     }
@@ -39,9 +37,7 @@ public class Sensor {
         this.roomId = roomId;
     }
 
-    // -------------------------------------------------------------------------
-    // Getters & Setters
-    // -------------------------------------------------------------------------
+    // Getters and Setters
 
     public String getId() {
         return id;
