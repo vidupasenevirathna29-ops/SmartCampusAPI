@@ -1,10 +1,11 @@
 package com.smartcampus.exception;
 
 /**
- * Thrown when a POST /sensors/{id}/readings is attempted but the
- * target sensor is currently in MAINTENANCE (or OFFLINE) status.
+ * This exception is thrown when a reading is submitted for a sensor that isn't active.
+ * If the sensor is in MAINTENANCE or OFFLINE status, we block the request
+ * because it wouldn't make sense to record data from an unavailable sensor.
  *
- * The ExceptionMapper (Day 4) will convert this into HTTP 403 Forbidden.
+ * The ExceptionMapper handles this and returns a 403 Forbidden response.
  */
 public class SensorUnavailableException extends RuntimeException {
 
