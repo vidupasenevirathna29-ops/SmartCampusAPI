@@ -317,9 +317,9 @@ curl -s -X POST http://localhost:8080/api/v1/sensors/TEMP-002/readings \
 
 #### Q1.1 — JAX-RS Resource Lifecycle: Request-Scoped vs Singleton
 
-By default, JAX-RS creates a **new instance of each resource class for every HTTP request** (request-scoped). Fields declared inside a resource class such as `RoomResource` are freshly initialised on every call and are not shared between requests. This design keeps REST services stateless: each request is fully isolated, there are no shared mutable fields, and JAX-RS can safely inject request-specific objects like `UriInfo` via `@Context`.
+By default, JAX-RS creates a **new instance of each resource class for every HTTP request** (request-scoped). This means any fields inside a class like `RoomResource` are reset on every call, so you can't store data there. It also means JAX-RS can safely inject request-specific things like `UriInfo` via `@Context` without thread-safety issues.
 
-The consequence in this project is that all persistent state — rooms, sensors, readings — lives inside the `DataStore` singleton (`DataStore.getInstance()`), not as fields on the resource classes. The resource classes are disposable per-request shells; `DataStore` is the single source of truth that survives across the lifetime of the server. Making a resource a true singleton is possible using `@Singleton`, but that forces every instance field to be thread-safe, adding unnecessary complexity for most use cases.
+In this project, all the data — rooms, sensors, readings — is kept in the `DataStore` singleton (`DataStore.getInstance()`). The resource classes just handle the HTTP logic and don't hold any state themselves. You could annotate a resource with `@Singleton` to make it shared across requests, but then you'd have to make every field thread-safe, which adds unnecessary complexity for most cases.
 
 ---
 
