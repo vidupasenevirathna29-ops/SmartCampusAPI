@@ -8,8 +8,9 @@ import javax.ws.rs.ext.Provider;
 import java.util.Map;
 
 /**
- * Exception mapper for RoomNotEmptyException.
- * Maps to HTTP 409 Conflict.
+ * This mapper handles the RoomNotEmptyException.
+ * When someone tries to delete a room that still has sensors, we catch it here
+ * and return a 409 Conflict to tell the client they need to remove the sensors first.
  */
 @Provider
 public class RoomNotEmptyExceptionMapper implements ExceptionMapper<RoomNotEmptyException> {
