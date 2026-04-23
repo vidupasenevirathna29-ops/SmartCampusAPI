@@ -342,7 +342,7 @@ In this project, the discovery endpoint (`GET /api/v1`) returns a `_links` objec
 
 `GET /rooms` returns **full `Room` objects** (including `name`, `capacity`, and `sensorIds`) rather than a list of IDs only.
 
-Returning full objects costs more bandwidth per response but saves the client from making N additional requests to resolve each ID — the classic N+1 problem. A campus management dashboard typically renders the full room list with names and capacities in a single view. At the expected scale of a campus system (tens to low hundreds of rooms), one slightly larger payload is far cheaper than dozens of sequential HTTP round-trips. For very large collections or lazy-loading UIs, returning only IDs with pagination links would be the better trade-off, but for this domain returning full objects is the pragmatic choice that minimises latency.
+Returning full objects uses more bandwidth per response, but it saves the client from having to make an extra request for each room just to get its details. If we only returned IDs, the client would need N follow-up requests to load all the room data — that gets expensive quickly. Since a campus system won't have thousands of rooms, returning the full list in one go is more practical. It's a bit more data, but it avoids a lot of unnecessary round-trips. For much larger collections, returning only IDs with pagination would make more sense, but for this use case returning full objects is the better choice.
 
 ---
 
