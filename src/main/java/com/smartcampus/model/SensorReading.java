@@ -1,23 +1,21 @@
 package com.smartcampus.model;
 
 /**
- * Represents a single historical reading captured by a sensor.
- * Each reading is an immutable snapshot of a sensor's measurement at a point in time.
+ * Stores a single reading from a sensor at a specific point in time.
+ * We use this to keep a history of what values a sensor has recorded.
  */
 public class SensorReading {
 
-    /** Unique reading event ID — UUID recommended, e.g. "a1b2c3d4-..." */
+    /** A unique ID for this reading entry */
     private String id;
 
-    /** Epoch time in milliseconds when this reading was captured */
+    /** When this reading was taken, stored as a Unix timestamp in milliseconds */
     private long timestamp;
 
-    /** The actual metric value recorded by the hardware */
+    /** The measurement value from the sensor at the time of recording */
     private double value;
 
-    // -------------------------------------------------------------------------
     // Constructors
-    // -------------------------------------------------------------------------
 
     public SensorReading() {
     }
@@ -28,9 +26,7 @@ public class SensorReading {
         this.value = value;
     }
 
-    // -------------------------------------------------------------------------
-    // Getters & Setters
-    // -------------------------------------------------------------------------
+    // Getters and Setters
 
     public String getId() {
         return id;
